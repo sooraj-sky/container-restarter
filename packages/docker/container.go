@@ -18,9 +18,7 @@ const (
 	dockerRequestTimeout = 3 * time.Second
 )
 
-func DockerRestart() {
-	// Specify the directory to monitor
-	dirPath := "/Users/soorajks/Desktop/test"
+func DockerRestart(dirPath, continerToRestart string) {
 
 	// Create a new watcher
 	watcher, err := fsnotify.NewWatcher()
@@ -52,8 +50,8 @@ func DockerRestart() {
 			log.Println("event:", event)
 
 			// Restart the container when any changes are detected
-			containerName := "nostalgic_lumiere"
-			err = restartContainer(dockerClient, containerName)
+
+			err = restartContainer(dockerClient, continerToRestart)
 			if err != nil {
 				log.Println(err)
 			}
@@ -111,7 +109,6 @@ func RunRestart(dockerCli *client.Client, opts *restartOptions) error {
 			errs = append(errs, err.Error())
 			continue
 		}
-		//	_, _ = fmt.Fprintln(dockerCli.Out(), name)
 	}
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "\n"))
