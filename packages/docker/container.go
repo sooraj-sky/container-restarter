@@ -1,4 +1,4 @@
-package main
+package dockerapi
 
 import (
 	"context"
@@ -18,7 +18,7 @@ const (
 	dockerRequestTimeout = 3 * time.Second
 )
 
-func main() {
+func DockerRestart() {
 	// Specify the directory to monitor
 	dirPath := "/Users/soorajks/Desktop/test"
 
