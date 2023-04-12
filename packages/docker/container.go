@@ -18,22 +18,35 @@ const (
 	dockerRequestTimeout = 3 * time.Second
 )
 
-func DockerRestart(dirPath, continerToRestart string) {
+type DockerApi struct {
+	watcher    *fsnotify.Watcher
+	Containers map[string]string
+	Errors     chan error
+}
 
-	// Create a new watcher
+func (api *DockerApi) Close() {
+	api = nil
+}
+
+func New() (*DockerApi, error) {
 	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
+	app := DockerApi{
+		watcher:    watcher,
+		Containers: make(map[string]string, 0),
 	}
-	defer watcher.Close()
+	return &app, err
+}
 
-	// Add the directory to the watcher's list of directories to monitor
-	err = watcher.Add(dirPath)
-	if err != nil {
-		log.Fatal(err)
+func (api *DockerApi) RestartWatcher() (err error) {
+	api.watcher.Close()
+	api.watcher, err = fsnotify.NewWatcher()
+	for _, dir := range api.Containers {
+		err := api.watcher.Add(dir)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
-	// Create a new Docker client
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		log.Fatal(err)
@@ -42,22 +55,27 @@ func DockerRestart(dirPath, continerToRestart string) {
 	// Start a loop to monitor for events
 	for {
 		select {
-		case event, ok := <-watcher.Events:
+		case event, ok := <-api.watcher.Events:
 			if !ok {
 				return
 			}
 			// Print a message to the console when any changes are detected
-			log.Println("event:", event)
+			log.Println("event:", event.Name)
 
 			// Restart the container when any changes are detected
+			for container, dir := range api.Containers {
+				if !strings.Contains(event.Name, dir) {
+					continue
+				}
+				err = restartContainer(dockerClient, container)
+				if err != nil {
+					log.Println(err)
+				}
 
-			err = restartContainer(dockerClient, continerToRestart)
-			if err != nil {
-				log.Println(err)
 			}
-		case err, ok := <-watcher.Errors:
+		case err, ok := <-api.watcher.Errors:
 			if !ok {
-				return
+				return err
 			}
 			log.Println("error:", err)
 		}

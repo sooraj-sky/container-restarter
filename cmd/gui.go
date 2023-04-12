@@ -6,6 +6,8 @@ import (
 	"os"
 	"strings"
 
+	dockerapi "fsnotify/packages/docker"
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
@@ -19,6 +21,12 @@ import (
 func main() {
 	// Create a new Fyne app and window
 	myApp := app.New()
+
+	// file watcher api
+	api, err := dockerapi.New()
+	if err != nil {
+		log.Fatal(err)
+	}
 	myWindow := myApp.NewWindow("Dev reload")
 
 	// Set the size of the window to 650x720 pixels
@@ -47,6 +55,8 @@ func main() {
 				}
 				// Update the label with the selected folder path
 				selectedFolders[nameLabel].SetText(uri.Path()) // update the selected folder for this container
+				api.Containers[nameLabel] = uri.Path()
+				go api.RestartWatcher()
 			}, myWindow)
 		})
 
